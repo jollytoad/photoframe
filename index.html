@@ -1,61 +1,126 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Photos</title>
+<link rel="stylesheet" href="http://code.jquery.com/mobile/1.0a4.1/jquery.mobile-1.0a4.1.min.css" />
 <style>
-html, body { padding: 0; margin: 0; background-color: black; color: white; }
-img { width: 100%; height: 100%; border: none; }
+.photo { background-color: black; background-repeat: no-repeat; background-position: center; background-size: auto 100%; }
+.photo.ui-page .ui-footer { position: fixed; bottom: 0; opacity: 0.5; }
 </style>
-</head>
-<body>
-<img id="photo"/>
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.5.2.min.js"></script>
+<script type="text/javascript" src="http://code.jquery.com/mobile/1.0a4.1/jquery.mobile-1.0a4.1.min.js"></script>
 <script type="text/javascript">
 
-var users = ['sparkleysprout', 'jollytoad'],
-    photos = [],
-    img = document.getElementById("photo");
+$(function() {
+    var users = ['sparkleysprout', 'jollytoad'],
+        photos = [],
+        img = document.getElementById("photo"),
+        msg = document.getElementById("msg"),
+        head = document.getElementsByTagName("head")[0];
 
-function jsonp(url) {
-	var script = document.createElement("script");
-	script.type = "text/javascript";
-	script.src = url;
-	document.head.appendChild(script);
-}
+    function jsonp(url, fields, callback, delay) {
+        window.setTimeout(function() {
+            var script = document.createElement("script");
+            script.type = "text/javascript";
+            script.src = url + "&fields=" + fields + "&callback=photoframe." + callback;
+            head.appendChild(script);
+        }, delay);
+    }
+    
+    function getAlbums(user) {
+        msg.innerText = "Loading " + user;
+        jsonp("http://picasaweb.google.com/data/feed/api/user/"+user+"?alt=json-in-script&v=2", "title,entry(title,link[@rel='http://schemas.google.com/g/2005%23feed'](@href))", "gotAlbums", 0);
+    }
 
-function getAlbums(user) {
-//    console.log(user);
-	jsonp("http://picasaweb.google.com/data/feed/api/user/"+user+"?v=2&fields=entry(title,link[@rel='http://schemas.google.com/g/2005%23feed'](@href))&alt=json-in-script&callback=gotAlbums");
-}
+    function gotAlbums(data) {
+        msg.innerText = "Loaded " + data.feed.title.$t;
+        data.feed.entry.forEach(getPhotos);
+    }
 
-function gotAlbums(data) {
-//    console.log(data);
-    data.feed.entry.forEach(getPhotos);
-}
+    function getPhotos(album) {
+        msg.innerText = "Loading " + album.title.$t;
+        album.link.forEach(function(link, i) {
+            jsonp(link.href, "title,entry(content(@src))", "gotPhotos", i*10);
+        });
+    }
 
-function getPhotos(album) {
-//   console.log(album.title.$t);
-    album.link.forEach(function(link) {
-	    jsonp(link.href+"&fields=entry(content(@src))&callback=gotPhotos");
-	});
-}
+    function gotPhotos(data) {
+        msg.innerText = "Loaded " + data.feed.title.$t;
+        data.feed.entry.forEach(function(entry) {
+            photos.push({
+                url: entry.content.src,
+                album: data.feed.title.$t
+            });
+        });
+    }
 
-function gotPhotos(data) {
-//	console.log(data);
-	data.feed.entry.forEach(function(entry) {
-		photos.push(entry.content.src);
-	});
-}
+    window.photoframe = {
+        gotAlbums: gotAlbums,
+        gotPhotos: gotPhotos
+    };
 
-function showRandomPhoto() {
-	var i = Math.floor(Math.random()*photos.length);
-	img.src = photos[i];
-	window.setTimeout(showRandomPhoto, 5000);
-}
+    function setRandomPhoto() {
+        var i = Math.floor(Math.random()*photos.length),
+            photo = photos[i];
+        if (photo) {
+//            msg.innerText = url.replace(/^.*\//, "");
+            this.style.backgroundImage = 'url(' + photo.url + ')';
+            $(this).find(".album-title").text(photo.album);
+        }
+    }
 
-users.forEach(getAlbums);
+    msg.innerText = "Loading...";
 
-showRandomPhoto();
+    users.forEach(getAlbums);
+
+    $(".photo")
+        .live("pagehide", function() {
+            setRandomPhoto.apply(this);
+        })
+        .live("pageshow", function() {
+            setTimeout(function() {
+                var next = $.mobile.activePage.next(".photo");
+                if (!next.length) {
+                    next = $("#photo-0");
+                }
+                $.mobile.changePage(next[0].id, "fade", false, false);
+            }, 5000);
+        });
+
+    setTimeout(function() {
+        $(".photo").each(setRandomPhoto);
+    }, 2000);
+
+    setTimeout(function() {
+        $.mobile.changePage("photo-0", "flip", false, false);
+    }, 4000);
+});
 
 </script>
+</head> 
+<body> 
+
+<div data-role="page" id="front">
+	<div data-role="header">
+		<h1>Photos</h1>
+	</div>
+
+	<div data-role="content">
+		<p>Loading album data...</p>
+        <p id="msg"></p>
+	</div>
+</div>
+
+<div data-role="page" id="photo-0" class="photo">
+    <div data-role="footer">
+        <h4 class="album-title"></h4>
+    </div>
+</div>
+<div data-role="page" id="photo-1" class="photo">
+    <div data-role="footer">
+        <h4 class="album-title"></h4>
+    </div>
+</div>
+
 </body>
 </html>
-
