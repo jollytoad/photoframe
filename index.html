@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html, body { padding: 0; margin: 0; background-color: black; color: white; }
+img { width: 100%; height: 100%; border: none; }
+</style>
+</head>
+<body>
+<img id="photo"/>
+<script type="text/javascript">
+
+var users = ['sparkleysprout', 'jollytoad'],
+    photos = [],
+    img = document.getElementById("photo");
+
+function jsonp(url) {
+	var script = document.createElement("script");
+	script.type = "text/javascript";
+	script.src = url;
+	document.head.appendChild(script);
+}
+
+function getAlbums(user) {
+//    console.log(user);
+	jsonp("http://picasaweb.google.com/data/feed/api/user/"+user+"?v=2&fields=entry(title,link[@rel='http://schemas.google.com/g/2005%23feed'](@href))&alt=json-in-script&callback=gotAlbums");
+}
+
+function gotAlbums(data) {
+//    console.log(data);
+    data.feed.entry.forEach(getPhotos);
+}
+
+function getPhotos(album) {
+//   console.log(album.title.$t);
+    album.link.forEach(function(link) {
+	    jsonp(link.href+"&fields=entry(content(@src))&callback=gotPhotos");
+	});
+}
+
+function gotPhotos(data) {
+//	console.log(data);
+	data.feed.entry.forEach(function(entry) {
+		photos.push(entry.content.src);
+	});
+}
+
+function showRandomPhoto() {
+	var i = Math.floor(Math.random()*photos.length);
+	img.src = photos[i];
+	window.setTimeout(showRandomPhoto, 5000);
+}
+
+users.forEach(getAlbums);
+
+showRandomPhoto();
+
+</script>
+</body>
+</html>
+
