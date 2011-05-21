@@ -6,6 +6,7 @@
 <style>
 .photo { background-color: black; background-repeat: no-repeat; background-position: center; background-size: auto 100%; }
 .photo.ui-page .ui-footer { position: fixed; bottom: 0; opacity: 0.5; }
+.photo .ui-footer .ui-btn-left { float: left; margin: 0.2em; }
 </style>
 <script type="text/javascript" src="http://code.jquery.com/jquery-1.5.2.min.js"></script>
 <script type="text/javascript" src="http://code.jquery.com/mobile/1.0a4.1/jquery.mobile-1.0a4.1.min.js"></script>
@@ -13,10 +14,13 @@
 
 $(function() {
     var users = ['sparkleysprout', 'jollytoad'],
-        photos = [],
+        photos = JSON.parse(localStorage.getItem("photos") || "[]"),
+        albums = JSON.parse(localStorage.getItem("albums") || "[]"),
+        albumCount = 0,
         img = document.getElementById("photo"),
         msg = document.getElementById("msg"),
-        head = document.getElementsByTagName("head")[0];
+        head = document.getElementsByTagName("head")[0],
+        photoTimeout;
 
     function jsonp(url, fields, callback, delay) {
         window.setTimeout(function() {
@@ -34,6 +38,7 @@ $(function() {
 
     function gotAlbums(data) {
         msg.innerText = "Loaded " + data.feed.title.$t;
+        loadCount = data.feed.entry.length;
         data.feed.entry.forEach(getPhotos);
     }
 
@@ -46,12 +51,24 @@ $(function() {
 
     function gotPhotos(data) {
         msg.innerText = "Loaded " + data.feed.title.$t;
+        var albumData = {
+            title: data.feed.title.$t,
+            first: photos.length
+        };
         data.feed.entry.forEach(function(entry) {
             photos.push({
                 url: entry.content.src,
                 album: data.feed.title.$t
             });
         });
+        albumData.last = photos.length-1;
+        albums.push(albumData);
+        $("<h3/>").text(albumData.title).appendTo($("<li/>").appendTo("#albums"));
+                
+        loadCount--;
+        if (loadCount === 0) {
+            localStorage.setItem("photos", JSON.stringify(photos));
+        }
     }
 
     window.photoframe = {
@@ -69,16 +86,19 @@ $(function() {
         }
     }
 
-    msg.innerText = "Loading...";
-
-    users.forEach(getAlbums);
+	function loadPhotoData() {
+	    msg.innerText = "Loading...";
+	    albums = [];
+		photos = [];	
+    	users.forEach(getAlbums);
+	}
 
     $(".photo")
         .live("pagehide", function() {
             setRandomPhoto.apply(this);
         })
         .live("pageshow", function() {
-            setTimeout(function() {
+            photoTimeout = setTimeout(function() {
                 var next = $.mobile.activePage.next(".photo");
                 if (!next.length) {
                     next = $("#photo-0");
@@ -87,37 +107,57 @@ $(function() {
             }, 5000);
         });
 
-    setTimeout(function() {
-        $(".photo").each(setRandomPhoto);
-    }, 2000);
+    $("#home").live("pagebeforeshow", function() {
+    	clearTimeout(photoTimeout);
+    });
 
-    setTimeout(function() {
-        $.mobile.changePage("photo-0", "flip", false, false);
-    }, 4000);
+    function startSlideshow(delay1, delay2) {
+		setTimeout(function() {
+		    $(".photo").each(setRandomPhoto);
+		}, 1000);
+
+		setTimeout(function() {
+		    $.mobile.changePage("photo-0", "slide", false, false);
+		}, 4000);
+	}
+
+    if (!photos || photos.length === 0) {
+    	loadPhotoData();
+        startSlideshow(1000,4000);
+	} else {
+	    startSlideshow(0,2000);
+	}
+		
 });
 
 </script>
 </head> 
 <body> 
 
-<div data-role="page" id="front">
-	<div data-role="header">
+<div data-role="page" id="home">
+	<div data-role="header" data-theme="b">
 		<h1>Photos</h1>
+		<a href="#photo-0" data-role="button" data-icon="arrow-r" data-iconpos="right" class="ui-btn-right">Slideshow</a>
 	</div>
 
 	<div data-role="content">
-		<p>Loading album data...</p>
-        <p id="msg"></p>
+        <ul data-role="listview"></ul>
 	</div>
+
+    <div data-role="footer">
+        <h4 id="msg"></h4>
+    </div>
 </div>
 
 <div data-role="page" id="photo-0" class="photo">
     <div data-role="footer">
+        <a href="#home" data-role="button" data-icon="home">Home</a>
         <h4 class="album-title"></h4>
     </div>
 </div>
 <div data-role="page" id="photo-1" class="photo">
     <div data-role="footer">
+        <a href="#home" data-role="button" data-icon="home">Home</a>
         <h4 class="album-title"></h4>
     </div>
 </div>
