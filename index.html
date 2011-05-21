@@ -18,79 +18,101 @@ $(function() {
         albums = JSON.parse(localStorage.getItem("albums") || "[]"),
         albumCount = 0,
         img = document.getElementById("photo"),
-        msg = document.getElementById("msg"),
         head = document.getElementsByTagName("head")[0],
         photoTimeout;
 
-    function jsonp(url, fields, callback, delay) {
-        window.setTimeout(function() {
-            var script = document.createElement("script");
-            script.type = "text/javascript";
-            script.src = url + "&fields=" + fields + "&callback=photoframe." + callback;
-            head.appendChild(script);
-        }, delay);
-    }
-    
-    function getAlbums(user) {
-        msg.innerText = "Loading " + user;
-        jsonp("http://picasaweb.google.com/data/feed/api/user/"+user+"?alt=json-in-script&v=2", "title,entry(title,link[@rel='http://schemas.google.com/g/2005%23feed'](@href))", "gotAlbums", 0);
-    }
-
-    function gotAlbums(data) {
-        msg.innerText = "Loaded " + data.feed.title.$t;
-        loadCount = data.feed.entry.length;
-        data.feed.entry.forEach(getPhotos);
-    }
-
-    function getPhotos(album) {
-        msg.innerText = "Loading " + album.title.$t;
-        album.link.forEach(function(link, i) {
-            jsonp(link.href, "title,entry(content(@src))", "gotPhotos", i*10);
-        });
-    }
-
-    function gotPhotos(data) {
-        msg.innerText = "Loaded " + data.feed.title.$t;
-        var albumData = {
-            title: data.feed.title.$t,
-            first: photos.length
-        };
-        data.feed.entry.forEach(function(entry) {
-            photos.push({
-                url: entry.content.src,
-                album: data.feed.title.$t
-            });
-        });
-        albumData.last = photos.length-1;
-        albums.push(albumData);
-        $("<h3/>").text(albumData.title).appendTo($("<li/>").appendTo("#albums"));
-                
-        loadCount--;
-        if (loadCount === 0) {
-            localStorage.setItem("photos", JSON.stringify(photos));
+    function addAlbumItem(album, n) {
+        var ul = $("#albumlist"),
+            li = $("<li/>"),
+            count = $('<span class="ui-li-count"/>').text(album.count);
+        $('<a href="#album?album='+n+'"/>').text(album.title+" ").append(count).appendTo(li);
+        ul.append(li);
+        if (ul.data("listview")) {
+            ul.listview("refresh");
         }
     }
 
-    window.photoframe = {
-        gotAlbums: gotAlbums,
-        gotPhotos: gotPhotos
-    };
+    function msg(text) {
+        $(".msg").text(text);
+    }
+
+    function picasaGetAlbumsForUser(user, userIndex) {
+        msg("Loading albums for: " + user);
+        $.ajax({
+            url: "http://picasaweb.google.com/data/feed/api/user/" + user,
+            data: "alt=json-in-script&v=2&fields=title,entry(title,gphoto:*,media:*(media:thumbnail))",
+            dataType: "jsonp",
+            success: function(data) {
+                data.feed.entry.forEach(function(entry) {
+                    var album = {
+                            id: entry.gphoto$id.$t,
+                            title: entry.title.$t,
+                            icon: entry.media$group.media$thumbnail,
+                            user: userIndex,
+                            count: entry.gphoto$numphotos.$t
+                        },
+                        albumIndex = albums.length;
+                    albums.push(album);
+                    addAlbumItem(album, albumIndex, albums);
+
+                    setTimeout(function() {
+                        picasaGetPhotosFromAlbum(album, albumIndex, albums);
+                    }, 100);
+                });
+                localStorage.setItem("albums", JSON.stringify(albums));
+            }
+        });
+
+    }
+
+    function picasaGetPhotosFromAlbum(album, albumIndex) {
+        var user = users[album.user];
+        msg("Loading album: " + album.title + " from " + user);
+        $.ajax({
+            url: "http://picasaweb.google.com/data/feed/api/user/" + user + "/albumid/" + album.id,
+            data: "alt=json-in-script&v=2&fields=entry(gphoto:id)",
+            dataType: "jsonp",
+            success: function(data) {
+                album.first = photos.length;
+                data.feed.entry.forEach(function(entry) {
+                    photos.push({
+                        id: entry.gphoto$id.$t,
+                        a: albumIndex
+                    });
+                });
+                album.last = photos.length - 1;
+                localStorage.setItem("photos", JSON.stringify(photos));
+            }
+        });
+    }
 
     function setRandomPhoto() {
         var i = Math.floor(Math.random()*photos.length),
-            photo = photos[i];
-        if (photo) {
-//            msg.innerText = url.replace(/^.*\//, "");
-            this.style.backgroundImage = 'url(' + photo.url + ')';
-            $(this).find(".album-title").text(photo.album);
+            photo = photos[i],
+            album = photo && albums[photo.a],
+            user = album && users[album.user],
+            page = $(this);
+
+        if (photo && album) {
+            $.ajax({
+                url: "http://picasaweb.google.com/data/entry/api/user/" + user + "/albumid/" + album.id + "/photoid/" + photo.id,
+                dataType: "jsonp",
+                data: "alt=json-in-script&v=2&fields=media:*",
+                success: function(data) {
+                    var url = data.entry.media$group.media$content[0].url;
+                    console.log(url, data);
+                    page.css("background-image", "url(" + url + ")");
+                    page.find(".album-title").text(album.title);
+                }
+            });
         }
     }
 
 	function loadPhotoData() {
-	    msg.innerText = "Loading...";
+	    msg("Loading...");
 	    albums = [];
-		photos = [];	
-    	users.forEach(getAlbums);
+		photos = [];
+    	users.forEach(picasaGetAlbumsForUser);
 	}
 
     $(".photo")
@@ -103,7 +125,7 @@ $(function() {
                 if (!next.length) {
                     next = $("#photo-0");
                 }
-                $.mobile.changePage(next[0].id, "fade", false, false);
+                $.mobile.changePage(next[0].id, "fade");
             }, 5000);
         });
 
@@ -117,7 +139,7 @@ $(function() {
 		}, 1000);
 
 		setTimeout(function() {
-		    $.mobile.changePage("photo-0", "slide", false, false);
+		    $.mobile.changePage("photo-0", "slide");
 		}, 4000);
 	}
 
@@ -125,9 +147,9 @@ $(function() {
     	loadPhotoData();
         startSlideshow(1000,4000);
 	} else {
+        albums.forEach(addAlbumItem);
 	    startSlideshow(0,2000);
 	}
-		
 });
 
 </script>
@@ -136,16 +158,47 @@ $(function() {
 
 <div data-role="page" id="home">
 	<div data-role="header" data-theme="b">
-		<h1>Photos</h1>
+		<h1>Photoframe</h1>
 		<a href="#photo-0" data-role="button" data-icon="arrow-r" data-iconpos="right" class="ui-btn-right">Slideshow</a>
 	</div>
 
 	<div data-role="content">
-        <ul data-role="listview"></ul>
+        <h2>Configuration</h2>
+        <ul data-role="listview" data-inset="true">
+            <li><a href="#origins">Origins</a></li>
+            <li><a href="#albums">Albums</a></li>
+        </ul>
 	</div>
 
     <div data-role="footer">
-        <h4 id="msg"></h4>
+        <h4 class="msg"></h4>
+    </div>
+</div>
+
+<div data-role="page" id="origins">
+    <div data-role="header" data-theme="b">
+        <a href="#home" data-role="button" data-icon="home">Home</a>
+        <h1>Origins</h1>
+        <a href="#photo-0" data-role="button" data-icon="arrow-r" data-iconpos="right" class="ui-btn-right">Slideshow</a>
+    </div>
+
+    <div data-role="content">
+    </div>
+</div>
+
+<div data-role="page" id="albums">
+	<div data-role="header" data-theme="b">
+        <a href="#home" data-role="button" data-icon="home">Home</a>
+		<h1>Photo Albums</h1>
+		<a href="#photo-0" data-role="button" data-icon="arrow-r" data-iconpos="right" class="ui-btn-right">Slideshow</a>
+	</div>
+
+	<div data-role="content">
+        <ul id="albumlist" data-role="listview"></ul>
+	</div>
+
+    <div data-role="footer">
+        <h4 class="msg"></h4>
     </div>
 </div>
 
