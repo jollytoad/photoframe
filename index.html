@@ -13,7 +13,12 @@
 <script type="text/javascript">
 
 $(function() {
-    var users = ['sparkleysprout', 'jollytoad'],
+    var sites = {},
+        origins = JSON.parse(localStorage.getItem("origins") || "[]"),
+        defaultOrigins = [
+            { site: "picasa", username: "sparkleysprout" },
+            { site: "picasa", username: "jollytoad" }
+        ],
         photos = JSON.parse(localStorage.getItem("photos") || "[]"),
         albums = JSON.parse(localStorage.getItem("albums") || "[]"),
         albumCount = 0,
@@ -21,55 +26,65 @@ $(function() {
         head = document.getElementsByTagName("head")[0],
         photoTimeout;
 
-    function addAlbumItem(album, n) {
-        var ul = $("#albumlist"),
-            li = $("<li/>"),
-            count = $('<span class="ui-li-count"/>').text(album.count);
-        $('<a href="#album?album='+n+'"/>').text(album.title+" ").append(count).appendTo(li);
-        ul.append(li);
+    function addListItem(list, aOpts, opts) {
+        var ul = $(list),
+            li = $("<li/>").appendTo(ul),
+            a = $("<a/>", aOpts).appendTo(li);
+        if (opts && opts.count !== undefined) {
+            var count = $('<span class="ui-li-count"/>').text(opts.count).appendTo(a);
+        }
         if (ul.data("listview")) {
             ul.listview("refresh");
         }
+    }
+    function addAlbumItem(album, albumIndex) {
+        addListItem("#albumlist", { href: "#album?album=" + albumIndex, text: album.title }, { count: album.count });
+    }
+
+    function addOriginItem(origin, originIndex) {
+        addListItem("#originlist-" + origin.site, { href: "#", text: origin.title });
     }
 
     function msg(text) {
         $(".msg").text(text);
     }
 
-    function picasaGetAlbumsForUser(user, userIndex) {
-        msg("Loading albums for: " + user);
+    function picasaGetAlbumsForUser(origin, originIndex) {
+        msg("Loading albums for: " + origin.username);
         $.ajax({
-            url: "http://picasaweb.google.com/data/feed/api/user/" + user,
-            data: "alt=json-in-script&v=2&fields=title,entry(title,gphoto:*,media:*(media:thumbnail))",
+            url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username,
+            data: "alt=json-in-script&v=2&fields=gphoto:*,entry(title,gphoto:*,media:*(media:thumbnail))",
             dataType: "jsonp",
             success: function(data) {
+                origin.title = data.feed.gphoto$nickname.$t;
+                addOriginItem(origin, originIndex);
                 data.feed.entry.forEach(function(entry) {
                     var album = {
                             id: entry.gphoto$id.$t,
                             title: entry.title.$t,
                             icon: entry.media$group.media$thumbnail,
-                            user: userIndex,
+                            origin: originIndex,
                             count: entry.gphoto$numphotos.$t
                         },
                         albumIndex = albums.length;
                     albums.push(album);
-                    addAlbumItem(album, albumIndex, albums);
+                    addAlbumItem(album, albumIndex);
 
                     setTimeout(function() {
-                        picasaGetPhotosFromAlbum(album, albumIndex, albums);
+                        picasaGetPhotosFromAlbum(album, albumIndex);
                     }, 100);
                 });
+                localStorage.setItem("origins", JSON.stringify(origins));
                 localStorage.setItem("albums", JSON.stringify(albums));
             }
         });
-
     }
 
     function picasaGetPhotosFromAlbum(album, albumIndex) {
-        var user = users[album.user];
-        msg("Loading album: " + album.title + " from " + user);
+        var origin = origins[album.origin];
+        msg("Loading album: " + album.title + " from " + (origin.title || origin.username));
         $.ajax({
-            url: "http://picasaweb.google.com/data/feed/api/user/" + user + "/albumid/" + album.id,
+            url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username + "/albumid/" + album.id,
             data: "alt=json-in-script&v=2&fields=entry(gphoto:id)",
             dataType: "jsonp",
             success: function(data) {
@@ -86,24 +101,37 @@ $(function() {
         });
     }
 
+    function picasaGetPhoto(origin, album, photo, callback) {
+        $.ajax({
+            url: "http://picasaweb.google.com/data/entry/api/user/" + origin.username + "/albumid/" + album.id + "/photoid/" + photo.id,
+            dataType: "jsonp",
+            data: "alt=json-in-script&v=2&fields=media:*",
+            success: function(data) {
+                callback({
+                    url: data.entry.media$group.media$content[0].url
+                });
+            }
+        });
+    }
+
+    sites.picasa = {
+        loadOrigin: picasaGetAlbumsForUser,
+        loadPhoto: picasaGetPhoto
+    };
+
     function setRandomPhoto() {
         var i = Math.floor(Math.random()*photos.length),
             photo = photos[i],
             album = photo && albums[photo.a],
-            user = album && users[album.user],
+            origin = album && origins[album.origin],
+            site = origin && sites[origin.site],
             page = $(this);
 
-        if (photo && album) {
-            $.ajax({
-                url: "http://picasaweb.google.com/data/entry/api/user/" + user + "/albumid/" + album.id + "/photoid/" + photo.id,
-                dataType: "jsonp",
-                data: "alt=json-in-script&v=2&fields=media:*",
-                success: function(data) {
-                    var url = data.entry.media$group.media$content[0].url;
-                    console.log(url, data);
-                    page.css("background-image", "url(" + url + ")");
-                    page.find(".album-title").text(album.title);
-                }
+        if (site && site.loadPhoto) {
+            site.loadPhoto(origin, album, photo, function(data) {
+                console.log(data.url);
+                page.css("background-image", "url(" + data.url + ")");
+                page.find(".album-title").text(album.title);
             });
         }
     }
@@ -112,7 +140,12 @@ $(function() {
 	    msg("Loading...");
 	    albums = [];
 		photos = [];
-    	users.forEach(picasaGetAlbumsForUser);
+    	origins.forEach(function(origin, originIndex) {
+            var site = sites[origin.site];
+            if (site && site.loadOrigin) {
+                site.loadOrigin(origin, originIndex);
+            }
+        });
 	}
 
     $(".photo")
@@ -143,10 +176,12 @@ $(function() {
 		}, 4000);
 	}
 
-    if (!photos || photos.length === 0) {
+    if (!origins || !origins.length) {
+        origins = defaultOrigins;
     	loadPhotoData();
         startSlideshow(1000,4000);
 	} else {
+        origins.forEach(addOriginItem);
         albums.forEach(addAlbumItem);
 	    startSlideshow(0,2000);
 	}
@@ -183,6 +218,8 @@ $(function() {
     </div>
 
     <div data-role="content">
+        <h2>Picasa Accounts</h2>
+        <ul id="originlist-picasa" data-role="listview" data-inset="true"></ul>
     </div>
 </div>
 
