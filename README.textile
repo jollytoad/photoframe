@@ -1,0 +1,39 @@
+This is a little slideshow app, designed mainly to turn a tablet into a photoframe.
+
+It's entirely HTML and JS, using jQuery Mobile - so it should work on any browser supported by jQuery Mobile.
+
+Currently it connects to hardcoded Picasa accounts and fetches the list of all photos in all albums and then
+chooses and displays a photo at random.
+
+The photo list is saved to localStorage, so it doesn't need to fetch it everytime.
+
+Features I'm planning to add quite soon:
+
+* Configure picasa accounts (and save in localStorage), removing my hardcoded accounts.
+* Choose which albums to pick photos from.
+* Configure the delay between slides (currently hardcoded to 5 secs).
+
+Future features:
+
+* Pause, skip forward/backwards - using touch/swipe gestures
+* Show photo info
+* Support for alternative sites (eg. Flickr, Facebook, etc)
+
+----
+
+Copyright 2011 Mark Gibson
+
+All rights reserved.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
