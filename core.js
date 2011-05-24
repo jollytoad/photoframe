@@ -15,12 +15,14 @@ window.photoframe = (function($) {
         var o = opts || {},
             ul = $(list),
             li = $("<li/>").appendTo(ul),
-            a = $("<a/>", { href: "#" }).appendTo(li);
+            a = $("<a/>", { href: "#", className: "item" }).appendTo(li);
 
+		if (o.index !== undefined) {
+			li.attr("data-item-index", o.index);
+		}
         if (o.href) {
             $("<a/>", { href: o.href }).appendTo(li);
         }
-
         if (o.icon) {
             li.addClass("ui-li-has-thumb");
             $('<img/>', { src: o.icon, className: "ui-li-thumb" }).prependTo(a);
@@ -34,6 +36,9 @@ window.photoframe = (function($) {
         if (o.count !== undefined) {
             $('<span class="ui-li-count"/>').text(o.count).appendTo(a);
         }
+		if (o.exclude) {
+			li.addClass("exclude");
+		}
 
         if (ul.data("listview")) {
             ul.listview("refresh");
@@ -41,7 +46,7 @@ window.photoframe = (function($) {
     }
 
     function addAlbumItem(album, albumIndex) {
-        addListItem("#albumlist", { href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origins[album.origin].title });
+        addListItem("#albumlist", { index: albumIndex, href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origins[album.origin].title, exclude: album.exclude });
     }
 
     function addAlbum(album) {
@@ -52,7 +57,7 @@ window.photoframe = (function($) {
     }
 
     function addOriginItem(origin, originIndex) {
-        addListItem("#originlist-" + origin.site, { href: origin.link, title: origin.title });
+        addListItem("#originlist-" + origin.site, { index: originIndex, href: origin.link, title: origin.title });
     }
 
     function addOrigin(origin) {
@@ -142,6 +147,14 @@ window.photoframe = (function($) {
     $("#home").live("pagebeforeshow", function() {
     	clearTimeout(photoTimeout);
     });
+
+	$("#albumlist a.item").live("click", function(event) {
+		var li = $(this).closest("li"),
+			index = parseInt(li.attr("data-item-index"));
+		li.toggleClass("exclude");
+		albums[index].exclude = li.hasClass("exclude");
+		event.preventDefault();
+	});
 
     $(document).ready(function() {
         if (!origins || !origins.length) {

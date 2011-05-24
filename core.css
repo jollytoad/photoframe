@@ -1,0 +1,19 @@
+.photo {
+	background-color: black;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: auto 100%;
+}
+.photo.ui-page .ui-footer {
+	position: fixed;
+	bottom: 0;
+	opacity: 0.5;
+}
+.photo .ui-footer .ui-btn-left {
+	float: left;
+	margin: 0.2em;
+}
+#albumlist li.exclude {
+	opacity: 0.4;
+}
+
