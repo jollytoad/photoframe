@@ -26,23 +26,41 @@ $(function() {
         head = document.getElementsByTagName("head")[0],
         photoTimeout;
 
-    function addListItem(list, aOpts, opts) {
-        var ul = $(list),
+    function addListItem(list, opts) {
+        var o = opts || {},
+            ul = $(list),
             li = $("<li/>").appendTo(ul),
-            a = $("<a/>", aOpts).appendTo(li);
-        if (opts && opts.count !== undefined) {
-            var count = $('<span class="ui-li-count"/>').text(opts.count).appendTo(a);
+            a = $("<a/>", { href: "#" }).appendTo(li);
+
+        if (o.href) {
+            $("<a/>", { href: o.href }).appendTo(li);
         }
+
+        if (o.icon) {
+            li.addClass("ui-li-has-thumb");
+            $('<img/>', { src: o.icon, className: "ui-li-thumb" }).prependTo(a);
+        }
+        if (o.title) {
+            $('<h3/>', { text: o.title }).appendTo(a);
+        }
+        if (o.desc) {
+            $('<p/>', { text: o.desc }).appendTo(a);
+        }
+        if (o.count !== undefined) {
+//            $('<span class="ui-li-count"/>').text(o.count).appendTo(a);
+        }
+
         if (ul.data("listview")) {
             ul.listview("refresh");
         }
+
     }
     function addAlbumItem(album, albumIndex) {
-        addListItem("#albumlist", { href: "#album?album=" + albumIndex, text: album.title }, { count: album.count });
+        addListItem("#albumlist", { href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origins[album.origin].title });
     }
 
     function addOriginItem(origin, originIndex) {
-        addListItem("#originlist-" + origin.site, { href: "#", text: origin.title });
+        addListItem("#originlist-" + origin.site, { href: origin.link, title: origin.title });
     }
 
     function msg(text) {
@@ -53,18 +71,20 @@ $(function() {
         msg("Loading albums for: " + origin.username);
         $.ajax({
             url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username,
-            data: "alt=json-in-script&v=2&fields=gphoto:*,entry(title,gphoto:*,media:*(media:thumbnail))",
+            data: "alt=json-in-script&v=2&fields=gphoto:*,entry(title,gphoto:*,media:*(media:thumbnail),link[@rel='alternate'])",
             dataType: "jsonp",
             success: function(data) {
                 origin.title = data.feed.gphoto$nickname.$t;
                 addOriginItem(origin, originIndex);
                 data.feed.entry.forEach(function(entry) {
+                    console.log(entry);
                     var album = {
                             id: entry.gphoto$id.$t,
                             title: entry.title.$t,
-                            icon: entry.media$group.media$thumbnail,
+                            icon: entry.media$group.media$thumbnail[0].url,
                             origin: originIndex,
-                            count: entry.gphoto$numphotos.$t
+                            count: entry.gphoto$numphotos.$t,
+                            link: entry.link[0].href
                         },
                         albumIndex = albums.length;
                     albums.push(album);
@@ -179,11 +199,15 @@ $(function() {
     if (!origins || !origins.length) {
         origins = defaultOrigins;
     	loadPhotoData();
-        startSlideshow(1000,4000);
+        if (!location.hash) {
+            startSlideshow(1000,4000);
+        }
 	} else {
         origins.forEach(addOriginItem);
         albums.forEach(addAlbumItem);
-	    startSlideshow(0,2000);
+        if (!location.hash) {
+    	    startSlideshow(0,2000);
+        }
 	}
 });
 
