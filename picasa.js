@@ -1,13 +1,28 @@
+/*global setTimeout, jQuery, photoframe */
 (function($, pf) {
+
+    function picasaGetPhotosFromAlbum(album, albumIndex) {
+        var origin = pf.getOriginOfAlbum(album);
+        pf.ui.msg("Loading album: " + album.title + " from " + (origin.title || origin.username));
+        $.ajax({
+            url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username + "/albumid/" + album.id,
+            data: "alt=json-in-script&v=2&fields=entry(gphoto:id)",
+            dataType: "jsonp",
+            success: function(data) {
+                var photos = data.feed.entry.map(function(entry) { return entry.gphoto$id.$t; });
+                pf.setAlbumProperty(albumIndex, "photos", photos);
+            }
+        });
+    }
+
     function picasaGetAlbumsForUser(origin, originIndex) {
-        pf.msg("Loading albums for: " + origin.username);
+        pf.ui.msg("Loading albums for: " + origin.username);
         $.ajax({
             url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username,
             data: "alt=json-in-script&v=2&fields=gphoto:*,entry(title,gphoto:*,media:*(media:thumbnail),link[@rel='alternate'])",
             dataType: "jsonp",
             success: function(data) {
-                origin.title = data.feed.gphoto$nickname.$t;
-                pf.addOriginItem(origin, originIndex);
+                pf.setOriginProperty(originIndex, "title", data.feed.gphoto$nickname.$t);
                 data.feed.entry.forEach(function(entry) {
                     var album = {
                             id: entry.gphoto$id.$t,
@@ -26,20 +41,6 @@
                 });
                 pf.saveOrigins();
                 pf.saveAlbums();
-            }
-        });
-    }
-
-    function picasaGetPhotosFromAlbum(album, albumIndex) {
-        var origin = pf.getOriginOfAlbum(album);
-        pf.msg("Loading album: " + album.title + " from " + (origin.title || origin.username));
-        $.ajax({
-            url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username + "/albumid/" + album.id,
-            data: "alt=json-in-script&v=2&fields=entry(gphoto:id)",
-            dataType: "jsonp",
-            success: function(data) {
-                album.photos =
-                	data.feed.entry.map(function(entry) { return entry.gphoto$id.$t; });
             }
         });
     }
