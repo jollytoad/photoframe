@@ -9,7 +9,8 @@ window.photoframe = (function($) {
         albums = JSON.parse(localStorage.getItem("albums") || "[]"),
         img = document.getElementById("photo"),
         head = document.getElementsByTagName("head")[0],
-        photoTimeout;
+        photoTimeout,
+        rebuild = false;
 
     function addListItem(list, opts) {
         var o = opts || {},
@@ -53,6 +54,9 @@ window.photoframe = (function($) {
         var index = albums.length;
         albums.push(album);
         addAlbumItem(album, index);
+        if (!album.exclude) {
+	        rebuild = true;
+        }
         return index;
     }
 
@@ -71,10 +75,6 @@ window.photoframe = (function($) {
         return origins[album.origin];
     }
 
-    function addPhoto(photo) {
-        photos.push(photo);
-        return photos.length-1;
-    }
     function saveOrigins() {
         localStorage.setItem("origins", JSON.stringify(origins));
     }
@@ -91,16 +91,37 @@ window.photoframe = (function($) {
         $(".msg").text(text);
     }
 
+	function buildPhotoList() {
+		photos = [];
+		albums.forEach(function(album, albumIndex) {
+			if (!album.exclude && album.photos) {
+				album.photos.forEach(function(photo, photoIndex) {
+					photos.push({
+						a: albumIndex,
+						p: photoIndex
+					});
+				});
+			}
+		});
+		savePhotos();
+		rebuild = false;
+	}
+
     function setRandomPhoto() {
+    	if (rebuild) {
+    		buildPhotoList();
+		}
+
         var i = Math.floor(Math.random()*photos.length),
             photo = photos[i],
             album = photo && albums[photo.a],
+            photoId = album.photos && album.photos[photo.p],
             origin = album && origins[album.origin],
             site = origin && sites[origin.site],
             page = $(this);
 
-        if (site && site.loadPhoto) {
-            site.loadPhoto(origin, album, photo, function(data) {
+        if (site && site.loadPhoto && photoId) {
+            site.loadPhoto(origin, album, photoId, function(data) {
                 console.log(data.url);
                 page.css("background-image", "url(" + data.url + ")");
                 page.find(".album-title").text(album.title);
@@ -111,7 +132,6 @@ window.photoframe = (function($) {
 	function loadPhotoData() {
 	    msg("Loading...");
 	    albums = [];
-		photos = [];
     	origins.forEach(function(origin, originIndex) {
             var site = sites[origin.site];
             if (site && site.loadOrigin) {
@@ -123,11 +143,13 @@ window.photoframe = (function($) {
     function startSlideshow(delay1, delay2) {
 		setTimeout(function() {
 		    $(".photo").each(setRandomPhoto);
-		}, 1000);
+		}, delay1);
 
-		setTimeout(function() {
-		    $.mobile.changePage("photo-0", "slide");
-		}, 4000);
+		if (delay2) {
+			setTimeout(function() {
+				$.mobile.changePage("photo-0", "slide");
+			}, delay2);
+		}
 	}
 
     $(".photo")
@@ -153,6 +175,7 @@ window.photoframe = (function($) {
 			index = parseInt(li.attr("data-item-index"));
 		li.toggleClass("exclude");
 		albums[index].exclude = li.hasClass("exclude");
+		rebuild = true;
 		event.preventDefault();
 	});
 
@@ -160,15 +183,11 @@ window.photoframe = (function($) {
         if (!origins || !origins.length) {
             origins = defaultOrigins;
             loadPhotoData();
-            if (!location.hash) {
-                startSlideshow(1000,4000);
-            }
+            startSlideshow(1000, location.hash ? 0 : 4000);
         } else {
             origins.forEach(addOriginItem);
             albums.forEach(addAlbumItem);
-            if (!location.hash) {
-                startSlideshow(0,2000);
-            }
+            startSlideshow(0, location.hash ? 0 : 2000);
         }
     });
 
@@ -177,7 +196,6 @@ window.photoframe = (function($) {
         msg: msg,
         addOriginItem: addOriginItem,
         addAlbum: addAlbum,
-        addPhoto: addPhoto,
         getOriginOfAlbum: getOriginOfAlbum,
         saveOrigins: saveOrigins,
         saveAlbums: saveAlbums,

@@ -15,7 +15,8 @@
                             icon: entry.media$group.media$thumbnail[0].url,
                             origin: originIndex,
                             count: entry.gphoto$numphotos.$t,
-                            link: entry.link[0].href
+                            link: entry.link[0].href,
+                            photos: []
                         };
 
                     var albumIndex = pf.addAlbum(album);
@@ -38,24 +39,15 @@
             data: "alt=json-in-script&v=2&fields=entry(gphoto:id)",
             dataType: "jsonp",
             success: function(data) {
-                data.feed.entry.forEach(function(entry) {
-                    var photoIndex = pf.addPhoto({
-                            id: entry.gphoto$id.$t,
-                            a: albumIndex
-                        });
-                    if (album.first === undefined) {
-                        album.first = photoIndex;
-                    }
-                    album.last = photoIndex;
-                });
-                pf.savePhotos();
+                album.photos =
+                	data.feed.entry.map(function(entry) { return entry.gphoto$id.$t; });
             }
         });
     }
 
-    function picasaGetPhoto(origin, album, photo, callback) {
+    function picasaGetPhoto(origin, album, photoId, callback) {
         $.ajax({
-            url: "http://picasaweb.google.com/data/entry/api/user/" + origin.username + "/albumid/" + album.id + "/photoid/" + photo.id,
+            url: "http://picasaweb.google.com/data/entry/api/user/" + origin.username + "/albumid/" + album.id + "/photoid/" + photoId,
             dataType: "jsonp",
             data: "alt=json-in-script&v=2&fields=media:*",
             success: function(data) {
