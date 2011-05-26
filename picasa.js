@@ -15,8 +15,7 @@
                             icon: entry.media$group.media$thumbnail[0].url,
                             origin: originIndex,
                             count: entry.gphoto$numphotos.$t,
-                            link: entry.link[0].href,
-                            photos: []
+                            link: entry.link[0].href
                         };
 
                     var albumIndex = pf.addAlbum(album);
