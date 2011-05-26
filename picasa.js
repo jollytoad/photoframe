@@ -3,7 +3,7 @@
 
     function picasaGetPhotosFromAlbum(album, albumIndex) {
         var origin = pf.getOriginOfAlbum(album);
-        pf.ui.msg("Loading album: " + album.title + " from " + (origin.title || origin.username));
+        pf.msg("Loading album: " + album.title + " from " + (origin.title || origin.username));
         $.ajax({
             url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username + "/albumid/" + album.id,
             data: "alt=json-in-script&v=2&fields=entry(gphoto:id)",
@@ -16,7 +16,7 @@
     }
 
     function picasaGetAlbumsForUser(origin, originIndex) {
-        pf.ui.msg("Loading albums for: " + origin.username);
+        pf.msg("Loading albums for: " + origin.username);
         $.ajax({
             url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username,
             data: "alt=json-in-script&v=2&fields=gphoto:*,entry(title,gphoto:*,media:*(media:thumbnail),link[@rel='alternate'])",
@@ -39,8 +39,6 @@
                         picasaGetPhotosFromAlbum(album, albumIndex);
                     }, 100);
                 });
-                pf.saveOrigins();
-                pf.saveAlbums();
             }
         });
     }

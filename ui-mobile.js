@@ -41,7 +41,6 @@
         addListItem("#albumlist", { index: albumIndex, href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origin.title, exclude: album.exclude });
     }
 
-
     function setOrigin(origin, originIndex) {
         addListItem("#originlist-" + origin.site, { index: originIndex, href: origin.link, title: origin.title });
     }

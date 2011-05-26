@@ -3,87 +3,96 @@ window.photoframe = {};
 
 (function($, pf) {
     var sites = {},
-        origins = JSON.parse(localStorage.getItem("origins") || "[]"),
+        model = {
+            origins: [],
+            albums: [],
+            photos: []
+        },
         defaultOrigins = [
             { site: "picasa", username: "sparkleysprout" },
             { site: "picasa", username: "jollytoad" }
         ],
-        photos = JSON.parse(localStorage.getItem("photos") || "[]"),
-        albums = JSON.parse(localStorage.getItem("albums") || "[]"),
-        rebuildPhotos = false;
+        timeout = {},
+        rebuildPhotos = true;
+
+    function msg() {
+        pf.ui.msg.apply(this, arguments);
+    }
+
+    function loadData(name, defaultJSON) {
+        return model[name] = JSON.parse(localStorage.getItem("photoframe-" + name) || defaultJSON || "[]")
+    }
+
+    function saveData(name, delay) {
+        clearTimeout(timeout[name]);
+        timeout[name] = setTimeout(function() {
+            localStorage.setItem("photoframe-" + name, JSON.stringify(model[name]));
+        }, delay || 1000);
+    }
 
     function addAlbum(album, index) {
         if (index === undefined) {
-            index = albums.length;
+            index = model.albums.length;
         }
-        albums[index] = album;
+        model.albums[index] = album;
         pf.ui.setAlbum(album, index);
         if (!album.exclude) {
             rebuildPhotos = true;
         }
+        saveData("albums");
         return index;
     }
 
     function addOrigin(origin, index) {
         if (index === undefined) {
-            index = origins.length;
+            index = model.origins.length;
         }
-        origins[index] = origin;
+        model.origins[index] = origin;
         pf.ui.setOrigin(origin, index);
+        saveData("origins");
         return index;
     }
 
     function getAlbum(index) {
-        return albums[index];
+        return model.albums[index];
     }
 
     function setAlbumProperty(index, key, value) {
-        var album = albums[index];
+        var album = model.albums[index];
         if (album) {
             album[key] = value;
             rebuildPhotos = true;
             // pf.ui.setAlbum(album)
+            saveData("albums");
         }
     }
 
     function setOriginProperty(index, key, value) {
-        var origin = origins[index];
+        var origin = model.origins[index];
         if (origin) {
             origin[key] = value;
             // pf.ui.setOrigin(album)
+            saveData("origins");
         }
     }
 
     function getOriginOfAlbum(album) {
-        return origins[album.origin];
+        return model.origins[album.origin];
     }
-
-    function saveOrigins() {
-        localStorage.setItem("origins", JSON.stringify(origins));
-    }
-
-    function saveAlbums() {
-        localStorage.setItem("albums", JSON.stringify(albums));
-    }
-
-    function savePhotos() {
-        localStorage.setItem("photos", JSON.stringify(photos));
-    }
-
 
 	function doRebuildPhotos() {
-		photos = [];
-		albums.forEach(function(album, albumIndex) {
+		model.photos = [];
+		model.albums.forEach(function(album, albumIndex) {
 			if (!album.exclude && album.photos) {
 				album.photos.forEach(function(photo, photoIndex) {
-					photos.push({
+					model.photos.push({
 						a: albumIndex,
 						p: photoIndex
 					});
 				});
+                saveData("albums");
 			}
 		});
-		savePhotos();
 		rebuildPhotos = false;
 	}
 
@@ -92,11 +101,11 @@ window.photoframe = {};
             doRebuildPhotos();
         }
 
-        var i = Math.floor(Math.random()*photos.length),
-            photo = photos[i],
-            album = photo && albums[photo.a],
+        var i = Math.floor(Math.random() * model.photos.length),
+            photo = model.photos[i],
+            album = photo && model.albums[photo.a],
             photoId = album && album.photos && album.photos[photo.p],
-            origin = album && origins[album.origin],
+            origin = album && model.origins[album.origin],
             site = origin && sites[origin.site];
 
         if (site && site.loadPhoto && photoId) {
@@ -107,24 +116,28 @@ window.photoframe = {};
     }
 
 	function loadPhotoData() {
-	    pf.ui.msg("Loading...");
-	    albums = [];
-        origins.forEach(function(origin, originIndex) {
+	    pf.msg("Loading...");
+	    model.albums = [];
+        model.origins.forEach(function(origin, originIndex) {
             var site = sites[origin.site];
             if (site && site.loadOrigin) {
                 site.loadOrigin(origin, originIndex);
             }
         });
+        saveData("origins");
+        saveData("albums");
 	}
 
     function start() {
-        if (!origins || !origins.length) {
-            origins = defaultOrigins;
+        loadData("origins");
+        if (!model.origins || !model.origins.length) {
+            model.origins = defaultOrigins;
             loadPhotoData();
             pf.ui.startSlideshow(1000, 4000);
         } else {
-            origins.forEach(pf.ui.setOrigin);
-            albums.forEach(pf.ui.setAlbum);
+            loadData("albums");
+            model.origins.forEach(pf.ui.setOrigin);
+            model.albums.forEach(pf.ui.setAlbum);
             pf.ui.startSlideshow(0, 2000);
         }
     }
@@ -137,8 +150,7 @@ window.photoframe = {};
         setOriginProperty: setOriginProperty,
         getOriginOfAlbum: getOriginOfAlbum,
         getRandomPhoto: getRandomPhoto,
-        saveOrigins: saveOrigins,
-        saveAlbums: saveAlbums,
+        msg: msg,
         start: start
     });
 })(jQuery, photoframe);
