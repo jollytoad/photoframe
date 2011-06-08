@@ -40,7 +40,14 @@
 
     <div data-role="content">
         <h2>Picasa Accounts</h2>
-        <ul id="originlist-picasa" data-role="listview" data-inset="true"></ul>
+        <ul id="originlist-picasa" data-role="listview" data-inset="true" class="exclusion-list" data-photo-model="origins"></ul>
+        <form id="account-form-picasa" class="add-account" data-ajax="false">
+            <input type="hidden" name="site" value="picasa"/>
+            <div data-role="fieldcontain">
+                <label for="account-username-picasa">Add account:</label>
+                <input type="text" name="username" id="account-username-picasa" class="add-account" value="" placeholder="Enter username"/>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -52,7 +59,7 @@
 	</div>
 
 	<div data-role="content">
-        <ul id="albumlist" data-role="listview"></ul>
+        <ul id="albumlist" data-role="listview" class="exclusion-list" data-photo-model="albums"></ul>
 	</div>
 
     <div data-role="footer">

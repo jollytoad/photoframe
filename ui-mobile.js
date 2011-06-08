@@ -5,12 +5,20 @@
     function addListItem(list, opts) {
         var o = opts || {},
             ul = $(list),
-            li = $("<li/>").appendTo(ul),
+            li = $("<li/>"),
             a = $("<a/>", { href: "#", className: "item" }).appendTo(li);
 
 		if (o.index !== undefined) {
+            var existingItem = $("li[data-item-index="+o.index+"]", ul);
+            if (existingItem.length) {
+                existingItem.replaceWith(li);
+            } else {
+                li.appendTo(ul);
+            }
 			li.attr("data-item-index", o.index);
-		}
+		} else {
+            li.appendTo(ul);
+        }
         if (o.href) {
             $("<a/>", { href: o.href }).appendTo(li);
         }
@@ -38,11 +46,11 @@
 
     function setAlbum(album, albumIndex) {
         var origin = pf.getOriginOfAlbum(album);
-        addListItem("#albumlist", { index: albumIndex, href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origin.title, exclude: album.exclude });
+        addListItem("#albumlist", { index: albumIndex, href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origin.title, exclude: album.exclude || origin.exclude });
     }
 
     function setOrigin(origin, originIndex) {
-        addListItem("#originlist-" + origin.site, { index: originIndex, href: origin.link, title: origin.title });
+        addListItem("#originlist-" + origin.site, { index: originIndex, href: origin.link, title: origin.title, desc: origin.username });
     }
 
     function msg(text) {
@@ -87,13 +95,25 @@
         clearTimeout(photoTimeout);
     });
 
-	$("#albumlist a.item").live("click", function(event) {
+	$(".exclusion-list[data-photo-model] a.item").live("click", function(event) {
 		var li = $(this).closest("li"),
+            model = li.closest(".exclusion-list[data-photo-model]").attr("data-photo-model"),
 			index = parseInt(li.attr("data-item-index"), 10);
-		li.toggleClass("exclude");
-        pf.setAlbumProperty(index, "exclude", li.hasClass("exclude"));
+        li.toggleClass("exclude");
+        pf.setProperty(model, index, "exclude", li.hasClass("exclude"));
+        //pf.setAlbumProperty(index, "exclude", li.hasClass("exclude"));
 		event.preventDefault();
 	});
+
+    $("form.add-account").live("submit", function(event) {
+        event.preventDefault();
+        var origin = {};
+        $(":input", this).each(function() {
+            origin[this.name] = $(this).val();
+        });
+        pf.addOrigin(origin);
+        this.reset();
+    });
 
     pf.ui = {
         setAlbum: setAlbum,

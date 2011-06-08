@@ -19,10 +19,12 @@
         pf.msg("Loading albums for: " + origin.username);
         $.ajax({
             url: "http://picasaweb.google.com/data/feed/api/user/" + origin.username,
-            data: "alt=json-in-script&v=2&fields=gphoto:*,entry(title,gphoto:*,media:*(media:thumbnail),link[@rel='alternate'])",
+            data: "alt=json-in-script&v=2&fields=gphoto:*,link[@rel='alternate'],entry(title,gphoto:*,media:*(media:thumbnail),link[@rel='alternate'])",
             dataType: "jsonp",
             success: function(data) {
+                pf.setOriginProperty(originIndex, "link", data.feed.link[0].href);
                 pf.setOriginProperty(originIndex, "title", data.feed.gphoto$nickname.$t);
+
                 data.feed.entry.forEach(function(entry) {
                     var album = {
                             id: entry.gphoto$id.$t,
