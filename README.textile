@@ -9,8 +9,10 @@ The photo list is saved to localStorage, so it doesn't need to fetch it everytim
 
 Features I'm planning to add quite soon:
 
-* Configure picasa accounts (and save in localStorage), removing my hardcoded accounts.
-* Choose which albums to pick photos from.
+* Configure picasa accounts (and save in localStorage) - DONE
+* Allow accounts to be set via URL params.
+* Remove my hardcoded accounts.
+* Choose which albums/accounts to pick photos from - DONE
 * Configure the delay between slides (currently hardcoded to 5 secs).
 
 Future features:
