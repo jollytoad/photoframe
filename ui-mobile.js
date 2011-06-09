@@ -2,7 +2,7 @@
 (function($, pf) {
     var photoTimeout;
 
-    function addListItem(list, opts) {
+    function setListItem(list, opts) {
         var o = opts || {},
             ul = $(list),
             li = $("<li/>"),
@@ -35,9 +35,10 @@
         if (o.count !== undefined) {
             $('<span class="ui-li-count"/>').text(o.count).appendTo(a);
         }
-		if (o.exclude) {
-			li.addClass("exclude");
-		}
+
+        li.toggleClass("exclude", !!o.exclude);
+
+        li.toggleClass("hidden", !!o.hidden);
 
         if (ul.data("listview")) {
             ul.listview("refresh");
@@ -46,11 +47,11 @@
 
     function setAlbum(album, albumIndex) {
         var origin = pf.getOriginOfAlbum(album);
-        addListItem("#albumlist", { index: albumIndex, href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origin.title, exclude: album.exclude || origin.exclude });
+        setListItem("#albumlist", { index: albumIndex, href: album.link, title: album.title, count: album.count, icon: album.icon, desc: origin.title, exclude: album.exclude, hidden: origin.exclude });
     }
 
     function setOrigin(origin, originIndex) {
-        addListItem("#originlist-" + origin.site, { index: originIndex, href: origin.link, title: origin.title, desc: origin.username });
+        setListItem("#originlist-" + origin.site, { index: originIndex, href: origin.link, title: origin.title, desc: origin.username, exclude: origin.exclude });
     }
 
     function msg(text) {
@@ -95,13 +96,12 @@
         clearTimeout(photoTimeout);
     });
 
-	$(".exclusion-list[data-photo-model] a.item").live("click", function(event) {
+	$("ul.exclusion-list[data-photo-model] a.item").live("click", function(event) {
 		var li = $(this).closest("li"),
-            model = li.closest(".exclusion-list[data-photo-model]").attr("data-photo-model"),
+            model = li.closest("ul").attr("data-photo-model"),
 			index = parseInt(li.attr("data-item-index"), 10);
         li.toggleClass("exclude");
         pf.setProperty(model, index, "exclude", li.hasClass("exclude"));
-        //pf.setAlbumProperty(index, "exclude", li.hasClass("exclude"));
 		event.preventDefault();
 	});
 

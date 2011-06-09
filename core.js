@@ -75,20 +75,24 @@ window.photoframe = {};
         }
     }
 
-    function setOriginProperty(index, key, value) {
-        var origin = model.origins[index];
+    function setOriginProperty(originIndex, key, value) {
+        var origin = model.origins[originIndex];
         if (origin && origin[key] !== value) {
             origin[key] = value;
+            pf.ui.setOrigin(origin, originIndex);
             if (key === "exclude") {
                 rebuildPhotos = true;
+                model.albums.forEach(function(album, albumIndex) {
+                    if (album.origin === originIndex) {
+                        pf.ui.setAlbum(album, albumIndex);
+                    }
+                });
             }
-            pf.ui.setOrigin(origin, index);
             saveData("origins");
         }
     }
 
     function setProperty(modelList, index, key, value) {
-        console.log(arguments);
         ({
             'albums': setAlbumProperty,
             'origins': setOriginProperty
